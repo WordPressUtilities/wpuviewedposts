@@ -4,7 +4,7 @@
 Plugin Name: WPU post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.2
+Version: 0.3
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -15,6 +15,9 @@ class WPUPostViews {
     public $options;
     function __construct() {
 
+        add_action('init', array(&$this,
+            'load_plugin_textdomain'
+        ));
         add_action('init', array(&$this,
             'set_options'
         ));
@@ -38,6 +41,10 @@ class WPUPostViews {
         ));
     }
 
+    function load_plugin_textdomain() {
+        load_plugin_textdomain('wpupostviews', false, dirname(plugin_basename(__FILE__)) . '/lang/');
+    }
+
     function set_options() {
         $this->options = array(
             'plugin_publicname' => 'Post views',
@@ -49,21 +56,30 @@ class WPUPostViews {
         $this->settings_details = array(
             'option_id' => 'wpupostviews_options',
             'sections' => array(
+                'cookie' => array(
+                    'name' => __('Cookie', 'wpupostviews')
+                ),
                 'tracking' => array(
-                    'name' => 'Tracking'
+                    'name' => __('Tracking', 'wpupostviews')
                 )
             )
         );
         $this->settings = array(
             'use_cookie' => array(
-                'label' => 'Use a cookie',
-                'label_check' => 'Use a cookie to count only one view per visitor per post.',
+                'label' => __('Use a cookie', 'wpupostviews') ,
+                'label_check' => __('Use a cookie to count only one view per visitor per post.', 'wpupostviews') ,
                 'type' => 'checkbox'
             ) ,
             'cookie_days' => array(
-                'label' => 'Cookies expiration (in days)',
+                'label' => __('Expiration (in days)', 'wpupostviews') ,
                 'type' => 'number'
-            )
+            ),
+            'no_bots' => array(
+                'section' => 'tracking',
+                'label' => __('Dont count bots', 'wpupostviews') ,
+                'label_check' => __('Do not track views from bots and crawlers', 'wpupostviews') ,
+                'type' => 'checkbox'
+            ) ,
         );
     }
 
@@ -86,7 +102,7 @@ class WPUPostViews {
         echo '<form action="options.php" method="post">';
         settings_fields($this->settings_details['option_id']);
         do_settings_sections($this->options['plugin_id']);
-        echo submit_button(__('Save Changes'));
+        echo submit_button(__('Save Changes', 'wpupostviews'));
         echo '</form>';
         echo '</div>';
     }
@@ -156,6 +172,7 @@ class WPUPostViews {
             'post_id' => get_the_ID() ,
             'cookie_days' => isset($options['cookie_days']) ? $options['cookie_days'] : '10',
             'use_cookie' => (isset($options['use_cookie']) && $options['use_cookie'] == '1') ? '1' : '0',
+            'no_bots' => (isset($options['no_bots']) && $options['no_bots'] == '1') ? '1' : '0',
         );
 
         wp_enqueue_script('wpupostviews-tracker', plugins_url('/assets/js/tracker.js', __FILE__) , array(

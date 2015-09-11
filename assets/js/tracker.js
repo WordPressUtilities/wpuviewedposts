@@ -1,4 +1,13 @@
 jQuery(document).ready(function($) {
+
+    /* Block bots */
+    if (ajax_object.no_bots == '1') {
+        if (/bot|googlebot|crawler|spider|robot|crawling|baidu/i.test(navigator.userAgent)) {
+            return;
+        }
+    }
+
+    /* Test for cookies */
     if (ajax_object.use_cookie == '1') {
         var cookieObj = new wpuPostViewsCookies(),
             cookie_id = 'wpupostviewscookie_' + ajax_object.post_id;
@@ -7,6 +16,8 @@ jQuery(document).ready(function($) {
         }
         cookieObj.createCookie(cookie_id, '1', ajax_object.cookie_days);
     }
+
+    /* Count a view */
     jQuery.post(ajax_object.ajax_url, {
         'action': 'wpupostviews_track_view',
         'date': Date.now(),
