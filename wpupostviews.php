@@ -1,10 +1,10 @@
 <?php
 
 /*
-Plugin Name: WPU post views
+Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.3
+Version: 0.4
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -14,7 +14,6 @@ License URI: http://opensource.org/licenses/MIT
 class WPUPostViews {
     public $options;
     function __construct() {
-
         add_action('init', array(&$this,
             'load_plugin_textdomain'
         ));
@@ -39,6 +38,15 @@ class WPUPostViews {
         add_action('admin_init', array(&$this,
             'add_settings'
         ));
+        add_filter("plugin_action_links_" . plugin_basename(__FILE__) , array(&$this,
+            'add_settings_link'
+        ));
+        add_action('add_meta_boxes', array(&$this,
+            'add_meta_box'
+        ));
+        add_action('save_post', array(&$this,
+            'save_meta_box_data'
+        ));
     }
 
     function load_plugin_textdomain() {
@@ -58,7 +66,7 @@ class WPUPostViews {
             'sections' => array(
                 'cookie' => array(
                     'name' => __('Cookie', 'wpupostviews')
-                ),
+                ) ,
                 'tracking' => array(
                     'name' => __('Tracking', 'wpupostviews')
                 )
@@ -73,7 +81,7 @@ class WPUPostViews {
             'cookie_days' => array(
                 'label' => __('Expiration (in days)', 'wpupostviews') ,
                 'type' => 'number'
-            ),
+            ) ,
             'no_bots' => array(
                 'section' => 'tracking',
                 'label' => __('Dont count bots', 'wpupostviews') ,
@@ -87,10 +95,18 @@ class WPUPostViews {
       Admin
     ---------------------------------------------------------- */
 
+    /* Settings link */
+
+    function add_settings_link($links) {
+        $settings_link = '<a href="' . admin_url('options-general.php?page=' . $this->options['plugin_id']) . '">' . __('Settings') . '</a>';
+        array_unshift($links, $settings_link);
+        return $links;
+    }
+
     /* Menu */
 
     function admin_menu() {
-        add_options_page($this->options['plugin_name'] . ' Settings', $this->options['plugin_publicname'], $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
+        add_options_page($this->options['plugin_name'] . ' - ' . __('Settings') , $this->options['plugin_publicname'], $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
             'admin_settings'
         ) , '', 110);
     }
@@ -98,7 +114,25 @@ class WPUPostViews {
     /* Settings */
 
     function admin_settings() {
-        echo '<div class="wrap"><h2>' . get_admin_page_title() . '</h2>';
+        echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1>';
+
+        $nb_top_posts = 10;
+        $top_posts = get_posts(array(
+            'posts_per_page' => $nb_top_posts,
+            'meta_key' => 'wpupostviews_nbviews',
+            'orderby' => 'meta_value_num',
+        ));
+        if (!empty($top_posts)) {
+            echo '<hr />';
+            echo '<h2>' . sprintf(__('Top %s posts', 'wpupostviews') , $nb_top_posts) . '</h2>';
+            echo '<ol>';
+            foreach ($top_posts as $tp) {
+                echo '<li><a href="' . get_edit_post_link($tp->ID) . '"><strong>' . esc_attr($tp->post_title) . '</strong></a> (' . get_post_meta($tp->ID, 'wpupostviews_nbviews', 1) . ')</li>';
+            }
+            echo '</ol>';
+        }
+        echo '<hr />';
+        echo '<h2>' . __('Settings') . '</h2>';
         echo '<form action="options.php" method="post">';
         settings_fields($this->settings_details['option_id']);
         do_settings_sections($this->options['plugin_id']);
@@ -158,6 +192,46 @@ class WPUPostViews {
     }
 
     /* ----------------------------------------------------------
+      Meta box
+    ---------------------------------------------------------- */
+
+    function add_meta_box() {
+        add_meta_box('wpupostviews_sectionid', $this->options['plugin_publicname'], array(&$this,
+            'meta_box_callback'
+        ) , 'post', 'side');
+    }
+
+    function meta_box_callback($post) {
+
+        // Add a nonce field so we can check for it later.
+        wp_nonce_field('wpupostviews_save_meta_box_data', 'wpupostviews_meta_box_nonce');
+
+        $value = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
+
+        echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
+        echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($value) . '" />';
+    }
+
+    function save_meta_box_data($post_id) {
+
+        if ((defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || !isset($_POST['wpupostviews_meta_box_nonce']) || !wp_verify_nonce($_POST['wpupostviews_meta_box_nonce'], 'wpupostviews_save_meta_box_data')) {
+            return;
+        }
+
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+
+        if (!isset($_POST['wpupostviews_nbviews']) || !is_numeric($_POST['wpupostviews_nbviews'])) {
+            return;
+        }
+
+        $my_data = sanitize_text_field($_POST['wpupostviews_nbviews']);
+
+        update_post_meta($post_id, 'wpupostviews_nbviews', $my_data);
+    }
+
+    /* ----------------------------------------------------------
       Tracking
     ---------------------------------------------------------- */
 
@@ -189,6 +263,8 @@ class WPUPostViews {
         }
         $nb_views = intval(get_post_meta($post_id, 'wpupostviews_nbviews', 1));
         update_post_meta($post_id, 'wpupostviews_nbviews', ++$nb_views);
+        $orig_nb_views = intval(get_post_meta($post_id, 'wpupostviews_orig_nbviews', 1));
+        update_post_meta($post_id, 'wpupostviews_orig_nbviews', ++$orig_nb_views);
         wp_die();
     }
 }

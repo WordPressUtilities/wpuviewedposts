@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Options\n"
-"POT-Creation-Date: 2015-09-11 23:58+0200\n"
+"POT-Creation-Date: 2015-09-16 23:07+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
@@ -15,37 +15,50 @@ msgstr ""
 "X-Poedit-KeywordsList: __;_e\n"
 "X-Poedit-SearchPath-0: ../.\n"
 
-#: .././wpupostviews.php:60
+#: .././wpupostviews.php:68
 msgid "Cookie"
 msgstr "Cookie"
 
-#: .././wpupostviews.php:63
+#: .././wpupostviews.php:71
 msgid "Tracking"
 msgstr "Suivi"
 
-#: .././wpupostviews.php:69
+#: .././wpupostviews.php:77
 msgid "Use a cookie"
 msgstr "Utiliser un cookie"
 
-#: .././wpupostviews.php:70
+#: .././wpupostviews.php:78
 msgid "Use a cookie to count only one view per visitor per post."
 msgstr "Utiliser un cookie pour compter une seule vue par visiteur par post."
 
-#: .././wpupostviews.php:74
+#: .././wpupostviews.php:82
 msgid "Expiration (in days)"
 msgstr "Expiration (en jours)"
 
-#: .././wpupostviews.php:79
+#: .././wpupostviews.php:87
 msgid "Dont count bots"
 msgstr "Ignorer les bots"
 
-#: .././wpupostviews.php:80
+#: .././wpupostviews.php:88
 msgid "Do not track views from bots and crawlers"
 msgstr "Ne pas compter les vues des bots et crawlers"
 
-#: .././wpupostviews.php:105
+#: .././wpupostviews.php:101 .././wpupostviews.php:135
+msgid "Settings"
+msgstr "Réglages"
+
+#: .././wpupostviews.php:127
+#, php-format
+msgid "Top %s posts"
+msgstr "Top %s articles"
+
+#: .././wpupostviews.php:139
 msgid "Save Changes"
 msgstr "Sauvegarder"
+
+#: .././wpupostviews.php:211
+msgid "Number of views"
+msgstr "Nombre de vues"
 
 #~ msgid "Cookie expiration (in days)"
 #~ msgstr "Expiration du cookie (en jours)"
