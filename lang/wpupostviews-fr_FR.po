@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Options\n"
-"POT-Creation-Date: 2015-09-16 23:07+0200\n"
+"POT-Creation-Date: 2015-09-17 19:00+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
@@ -36,29 +36,41 @@ msgid "Expiration (in days)"
 msgstr "Expiration (en jours)"
 
 #: .././wpupostviews.php:87
+msgid "Ignore logged in users"
+msgstr "Ignorer les utilisateurs connectés"
+
+#: .././wpupostviews.php:88
+msgid "Do not track views by logged in users."
+msgstr "Ne pas compter les vues des utilisateurs connectés."
+
+#: .././wpupostviews.php:93
 msgid "Dont count bots"
 msgstr "Ignorer les bots"
 
-#: .././wpupostviews.php:88
-msgid "Do not track views from bots and crawlers"
-msgstr "Ne pas compter les vues des bots et crawlers"
+#: .././wpupostviews.php:94
+msgid "Do not track views from bots and crawlers."
+msgstr "Ne pas compter les vues des bots et crawlers."
 
-#: .././wpupostviews.php:101 .././wpupostviews.php:135
+#: .././wpupostviews.php:107 .././wpupostviews.php:115
+#: .././wpupostviews.php:141
 msgid "Settings"
 msgstr "Réglages"
 
-#: .././wpupostviews.php:127
+#: .././wpupostviews.php:133
 #, php-format
 msgid "Top %s posts"
 msgstr "Top %s articles"
 
-#: .././wpupostviews.php:139
+#: .././wpupostviews.php:145
 msgid "Save Changes"
 msgstr "Sauvegarder"
 
-#: .././wpupostviews.php:211
+#: .././wpupostviews.php:217
 msgid "Number of views"
 msgstr "Nombre de vues"
+
+#~ msgid "Do not track views from bots and crawlers"
+#~ msgstr "Ne pas compter les vues des bots et crawlers"
 
 #~ msgid "Cookie expiration (in days)"
 #~ msgstr "Expiration du cookie (en jours)"

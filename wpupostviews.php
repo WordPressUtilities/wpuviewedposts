@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.4
+Version: 0.5
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -82,10 +82,16 @@ class WPUPostViews {
                 'label' => __('Expiration (in days)', 'wpupostviews') ,
                 'type' => 'number'
             ) ,
+            'no_loggedin' => array(
+                'section' => 'tracking',
+                'label' => __('Ignore logged in users', 'wpupostviews') ,
+                'label_check' => __('Do not track views by logged in users.', 'wpupostviews') ,
+                'type' => 'checkbox'
+            ) ,
             'no_bots' => array(
                 'section' => 'tracking',
                 'label' => __('Dont count bots', 'wpupostviews') ,
-                'label_check' => __('Do not track views from bots and crawlers', 'wpupostviews') ,
+                'label_check' => __('Do not track views from bots and crawlers.', 'wpupostviews') ,
                 'type' => 'checkbox'
             ) ,
         );
@@ -202,33 +208,23 @@ class WPUPostViews {
     }
 
     function meta_box_callback($post) {
-
-        // Add a nonce field so we can check for it later.
         wp_nonce_field('wpupostviews_save_meta_box_data', 'wpupostviews_meta_box_nonce');
-
         $value = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
-
         echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
         echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($value) . '" />';
     }
 
     function save_meta_box_data($post_id) {
-
         if ((defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || !isset($_POST['wpupostviews_meta_box_nonce']) || !wp_verify_nonce($_POST['wpupostviews_meta_box_nonce'], 'wpupostviews_save_meta_box_data')) {
             return;
         }
-
         if (!current_user_can('edit_post', $post_id)) {
             return;
         }
-
         if (!isset($_POST['wpupostviews_nbviews']) || !is_numeric($_POST['wpupostviews_nbviews'])) {
             return;
         }
-
-        $my_data = sanitize_text_field($_POST['wpupostviews_nbviews']);
-
-        update_post_meta($post_id, 'wpupostviews_nbviews', $my_data);
+        update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
     }
 
     /* ----------------------------------------------------------
@@ -257,8 +253,12 @@ class WPUPostViews {
     }
 
     function track_view() {
+        $no_loggedin = (isset($options['no_loggedin']) && $options['no_loggedin'] == '1');
         $post_id = intval($_POST['post_id']);
         if (!is_numeric($post_id)) {
+            return;
+        }
+        if ($no_loggedin && is_user_logged_in()) {
             return;
         }
         $nb_views = intval(get_post_meta($post_id, 'wpupostviews_nbviews', 1));
@@ -266,6 +266,14 @@ class WPUPostViews {
         $orig_nb_views = intval(get_post_meta($post_id, 'wpupostviews_orig_nbviews', 1));
         update_post_meta($post_id, 'wpupostviews_orig_nbviews', ++$orig_nb_views);
         wp_die();
+    }
+
+    /* Uninstall */
+
+    function uninstall() {
+        delete_option('wpupostviews_options');
+        delete_post_meta_by_key('wpupostviews_nbviews');
+        delete_post_meta_by_key('wpupostviews_orig_nbviews');
     }
 }
 
