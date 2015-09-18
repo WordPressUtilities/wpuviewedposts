@@ -1,11 +1,11 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Options\n"
-"POT-Creation-Date: 2015-09-18 23:36+0200\n"
+"POT-Creation-Date: 2015-09-18 23:35+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
-"Language: fr_FR\n"
+"Language: it_IT\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -21,64 +21,57 @@ msgstr "Cookie"
 
 #: .././wpupostviews.php:73
 msgid "Tracking"
-msgstr "Suivi"
+msgstr "Rintracciabilità"
 
 #: .././wpupostviews.php:79
 msgid "Use a cookie"
-msgstr "Utiliser un cookie"
+msgstr "Utilizzare un cookie"
 
 #: .././wpupostviews.php:80
 msgid "Use a cookie to count only one view per visitor per post."
-msgstr "Utiliser un cookie pour compter une seule vue par visiteur par post."
+msgstr ""
+"Utilizzare un cookie per contare solo una visualizzazione per ogni "
+"visitatore per ogni post."
 
 #: .././wpupostviews.php:84
 msgid "Expiration (in days)"
-msgstr "Expiration (en jours)"
+msgstr "Scadenza (in giorni)"
 
 #: .././wpupostviews.php:89
 msgid "Ignore logged in users"
-msgstr "Ignorer les utilisateurs connectés"
+msgstr "Ignorare gli utenti registrati"
 
 #: .././wpupostviews.php:90
 msgid "Do not track views by logged in users."
-msgstr "Ne pas compter les vues des utilisateurs connectés."
+msgstr "Non traccia visualizzazioni per gli utenti registrati."
 
 #: .././wpupostviews.php:95
 msgid "Dont count bots"
-msgstr "Ignorer les bots"
+msgstr "Non contano i bot"
 
 #: .././wpupostviews.php:96
 msgid "Do not track views from bots and crawlers."
-msgstr "Ne pas compter les vues des bots et crawlers."
+msgstr "Non traccia viste da bot e crawler."
 
 #: .././wpupostviews.php:124 .././wpupostviews.php:132
 #: .././wpupostviews.php:168
 msgid "Settings"
-msgstr "Réglages"
+msgstr "Impostazioni"
 
 #: .././wpupostviews.php:144 .././wpupostviews.php:242
 #, php-format
 msgid "Top %s posts"
-msgstr "Top %s articles"
+msgstr "Top %s messaggi"
 
 #: .././wpupostviews.php:148
 #, php-format
 msgid "Real top %s posts"
-msgstr "Top %s articles réel"
+msgstr "Reale top %s messaggi"
 
 #: .././wpupostviews.php:172
 msgid "Save Changes"
-msgstr "Sauvegarder"
+msgstr "Salva cambiamenti"
 
 #: .././wpupostviews.php:240
 msgid "Number of views"
-msgstr "Nombre de vues"
-
-#~ msgid "Do not track views from bots and crawlers"
-#~ msgstr "Ne pas compter les vues des bots et crawlers"
-
-#~ msgid "Cookie expiration (in days)"
-#~ msgstr "Expiration du cookie (en jours)"
-
-#~ msgid "Cookies expiration (in days)"
-#~ msgstr "Expiration d"
+msgstr "Numero di visualizzazioni"

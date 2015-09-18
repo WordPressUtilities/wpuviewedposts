@@ -60,7 +60,9 @@ class WPUPostViews {
             'plugin_userlevel' => 'manage_options',
             'plugin_id' => 'wpupostviews',
             'plugin_pageslug' => 'wpupostviews',
+            'default_top' => apply_filters('wpupostviews_default_top', 10)
         );
+        $this->options['admin_url'] = admin_url('options-general.php?page=' . $this->options['plugin_id']);
         $this->settings_details = array(
             'option_id' => 'wpupostviews_options',
             'sections' => array(
@@ -98,13 +100,28 @@ class WPUPostViews {
     }
 
     /* ----------------------------------------------------------
+      Datas
+    ---------------------------------------------------------- */
+
+    function get_top_posts($nb = false, $orig = false) {
+        if ($nb == false) {
+            $nb = $this->options['default_top'];
+        }
+        return get_posts(array(
+            'posts_per_page' => $nb,
+            'meta_key' => 'wpupostviews_' . ($orig ? 'orig_' : '') . 'nbviews',
+            'orderby' => 'meta_value_num',
+        ));
+    }
+
+    /* ----------------------------------------------------------
       Admin
     ---------------------------------------------------------- */
 
     /* Settings link */
 
     function add_settings_link($links) {
-        $settings_link = '<a href="' . admin_url('options-general.php?page=' . $this->options['plugin_id']) . '">' . __('Settings') . '</a>';
+        $settings_link = '<a href="' . $this->options['admin_url'] . '">' . __('Settings') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
     }
@@ -122,21 +139,31 @@ class WPUPostViews {
     function admin_settings() {
         echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1>';
 
-        $nb_top_posts = 10;
-        $top_posts = get_posts(array(
-            'posts_per_page' => $nb_top_posts,
-            'meta_key' => 'wpupostviews_nbviews',
-            'orderby' => 'meta_value_num',
-        ));
-        if (!empty($top_posts)) {
-            echo '<hr />';
-            echo '<h2>' . sprintf(__('Top %s posts', 'wpupostviews') , $nb_top_posts) . '</h2>';
-            echo '<ol>';
-            foreach ($top_posts as $tp) {
-                echo '<li><a href="' . get_edit_post_link($tp->ID) . '"><strong>' . esc_attr($tp->post_title) . '</strong></a> (' . get_post_meta($tp->ID, 'wpupostviews_nbviews', 1) . ')</li>';
+        $count_methods = array(
+            'public' => array(
+                'name' => __('Top %s posts', 'wpupostviews') ,
+                'orig' => false
+            ) ,
+            'orig' => array(
+                'name' => __('Real top %s posts', 'wpupostviews') ,
+                'orig' => true
+            )
+        );
+
+        foreach ($count_methods as $method) {
+            $top_posts = $this->get_top_posts(false, $method['orig']);
+
+            if (!empty($top_posts)) {
+                echo '<hr />';
+                echo '<h2>' . sprintf($method['name'], $this->options['default_top']) . '</h2>';
+                echo '<ol>';
+                foreach ($top_posts as $tp) {
+                    echo '<li><a href="' . get_edit_post_link($tp->ID) . '"><strong>' . esc_attr($tp->post_title) . '</strong></a> (' . get_post_meta($tp->ID, 'wpupostviews_' . ($method['orig'] ? 'orig_' : '') . 'nbviews', 1) . ')</li>';
+                }
+                echo '</ol>';
             }
-            echo '</ol>';
         }
+
         echo '<hr />';
         echo '<h2>' . __('Settings') . '</h2>';
         echo '<form action="options.php" method="post">';
@@ -212,6 +239,7 @@ class WPUPostViews {
         $value = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
         echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
         echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($value) . '" />';
+        echo '<div><small><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews') , $this->options['default_top']) . '</a></small></div>';
     }
 
     function save_meta_box_data($post_id) {
@@ -240,7 +268,7 @@ class WPUPostViews {
         $script_settings = array(
             'ajax_url' => admin_url('admin-ajax.php') ,
             'post_id' => get_the_ID() ,
-            'cookie_days' => isset($options['cookie_days']) ? $options['cookie_days'] : '10',
+            'cookie_days' => isset($options['cookie_days']) ? $options['cookie_days'] : apply_filters('wpupostviews_default_cookie_days', '10') ,
             'use_cookie' => (isset($options['use_cookie']) && $options['use_cookie'] == '1') ? '1' : '0',
             'no_bots' => (isset($options['no_bots']) && $options['no_bots'] == '1') ? '1' : '0',
         );
@@ -249,7 +277,7 @@ class WPUPostViews {
             'jquery'
         ));
 
-        wp_localize_script('wpupostviews-tracker', 'ajax_object', $script_settings);
+        wp_localize_script('wpupostviews-tracker', 'wpupostviews_object', $script_settings);
     }
 
     function track_view() {
