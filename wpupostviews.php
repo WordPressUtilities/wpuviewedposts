@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.5
+Version: 0.6
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -22,9 +22,6 @@ class WPUPostViews {
         ));
         add_action('wp_enqueue_scripts', array(&$this,
             'js_callback'
-        ));
-        add_action('wp_footer', array(&$this,
-            'image_callback'
         ));
         add_action('wp_ajax_wpupostviews_track_view', array(&$this,
             'track_view'
@@ -235,11 +232,22 @@ class WPUPostViews {
     }
 
     function meta_box_callback($post) {
+        $wpupostviews_nbviews = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
+        $wpupostviews_orig_nbviews = get_post_meta($post->ID, 'wpupostviews_orig_nbviews', true);
+        $real_str = '';
+        if ($wpupostviews_orig_nbviews != $wpupostviews_nbviews) {
+            $real_str = '<br /><small>(' . sprintf(__('Real number: %s', 'wpupostviews') , '<strong>' . $wpupostviews_orig_nbviews . '</strong>') . ')</small>';
+        }
         wp_nonce_field('wpupostviews_save_meta_box_data', 'wpupostviews_meta_box_nonce');
-        $value = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
         echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
-        echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($value) . '" />';
-        echo '<div><small><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews') , $this->options['default_top']) . '</a></small></div>';
+        echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($wpupostviews_nbviews) . '" />';
+        echo $real_str;
+        echo '<br /><br />';
+        echo '<label for="wpupostviews_dntviews">';
+        echo '<input type="checkbox" id="wpupostviews_dntviews" name="wpupostviews_dntviews" value="1" ' . checked(get_post_meta($post->ID, 'wpupostviews_dntviews', true) , '1', 0) . ' />';
+        echo __('Do not track views', 'wpupostviews') . '</label>';
+
+        echo '<div><small><br /><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews') , $this->options['default_top']) . '</a></small></div>';
     }
 
     function save_meta_box_data($post_id) {
@@ -249,6 +257,12 @@ class WPUPostViews {
         if (!current_user_can('edit_post', $post_id)) {
             return;
         }
+
+        // Do not track views
+        $wpupostviews_dntviews = (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0';
+        update_post_meta($post_id, 'wpupostviews_dntviews', $wpupostviews_dntviews);
+
+        // Number of views
         if (!isset($_POST['wpupostviews_nbviews']) || !is_numeric($_POST['wpupostviews_nbviews'])) {
             return;
         }
@@ -284,9 +298,16 @@ class WPUPostViews {
         $no_loggedin = (isset($options['no_loggedin']) && $options['no_loggedin'] == '1');
         $post_id = intval($_POST['post_id']);
         if (!is_numeric($post_id)) {
+
             return;
         }
         if ($no_loggedin && is_user_logged_in()) {
+
+            return;
+        }
+        $wpupostviews_dntviews = get_post_meta($post_id, 'wpupostviews_dntviews', 1);
+        if ($wpupostviews_dntviews == '1') {
+
             return;
         }
         $nb_views = intval(get_post_meta($post_id, 'wpupostviews_nbviews', 1));
