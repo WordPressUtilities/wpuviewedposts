@@ -12,12 +12,13 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUPostViews {
+    public $version = '0.7.0';
     public $options;
-    function __construct() {
-        add_action('init', array(&$this,
+    public function __construct() {
+        add_action('plugins_loaded', array(&$this,
             'load_plugin_textdomain'
         ));
-        add_action('init', array(&$this,
+        add_action('plugins_loaded', array(&$this,
             'set_options'
         ));
         add_action('wp_enqueue_scripts', array(&$this,
@@ -32,10 +33,7 @@ class WPUPostViews {
         add_action('admin_menu', array(&$this,
             'admin_menu'
         ));
-        add_action('admin_init', array(&$this,
-            'add_settings'
-        ));
-        add_filter("plugin_action_links_" . plugin_basename(__FILE__) , array(&$this,
+        add_filter("plugin_action_links_" . plugin_basename(__FILE__), array(&$this,
             'add_settings_link'
         ));
         add_action('add_meta_boxes', array(&$this,
@@ -46,11 +44,11 @@ class WPUPostViews {
         ));
     }
 
-    function load_plugin_textdomain() {
+    public function load_plugin_textdomain() {
         load_plugin_textdomain('wpupostviews', false, dirname(plugin_basename(__FILE__)) . '/lang/');
     }
 
-    function set_options() {
+    public function set_options() {
         $this->options = array(
             'plugin_publicname' => 'Post views',
             'plugin_name' => 'Post views',
@@ -61,11 +59,12 @@ class WPUPostViews {
         );
         $this->options['admin_url'] = admin_url('options-general.php?page=' . $this->options['plugin_id']);
         $this->settings_details = array(
+            'plugin_id' => 'wpupostviews',
             'option_id' => 'wpupostviews_options',
             'sections' => array(
                 'cookie' => array(
                     'name' => __('Cookie', 'wpupostviews')
-                ) ,
+                ),
                 'tracking' => array(
                     'name' => __('Tracking', 'wpupostviews')
                 )
@@ -73,41 +72,51 @@ class WPUPostViews {
         );
         $this->settings = array(
             'use_cookie' => array(
-                'label' => __('Use a cookie', 'wpupostviews') ,
-                'label_check' => __('Use a cookie to count only one view per visitor per post.', 'wpupostviews') ,
+                'label' => __('Use a cookie', 'wpupostviews'),
+                'label_check' => __('Use a cookie to count only one view per visitor per post.', 'wpupostviews'),
                 'type' => 'checkbox'
-            ) ,
+            ),
             'cookie_days' => array(
-                'label' => __('Expiration (in days)', 'wpupostviews') ,
+                'label' => __('Expiration (in days)', 'wpupostviews'),
                 'type' => 'number'
-            ) ,
+            ),
             'no_loggedin' => array(
                 'section' => 'tracking',
-                'label' => __('Ignore logged in users', 'wpupostviews') ,
-                'label_check' => __('Do not track views by logged in users.', 'wpupostviews') ,
+                'label' => __('Ignore logged in users', 'wpupostviews'),
+                'label_check' => __('Do not track views by logged in users.', 'wpupostviews'),
                 'type' => 'checkbox'
-            ) ,
+            ),
             'no_bots' => array(
                 'section' => 'tracking',
-                'label' => __('Dont count bots', 'wpupostviews') ,
-                'label_check' => __('Do not track views from bots and crawlers.', 'wpupostviews') ,
+                'label' => __('Dont count bots', 'wpupostviews'),
+                'label_check' => __('Do not track views from bots and crawlers.', 'wpupostviews'),
                 'type' => 'checkbox'
-            ) ,
+            )
         );
+
+        if (is_admin()) {
+            include 'inc/WPUBaseSettings.php';
+            $settings_obj = new \wpupostviews\WPUBaseSettings($this->settings_details, $this->settings);
+
+            ## if no auto create_page and medias ##
+            if (isset($_GET['page']) && $_GET['page'] == 'wpupostviews') {
+                add_action('admin_init', array(&$settings_obj, 'load_assets'));
+            }
+        }
     }
 
     /* ----------------------------------------------------------
       Datas
     ---------------------------------------------------------- */
 
-    function get_top_posts($nb = false, $orig = false) {
+    public function get_top_posts($nb = false, $orig = false) {
         if ($nb == false) {
             $nb = $this->options['default_top'];
         }
         return get_posts(array(
             'posts_per_page' => $nb,
             'meta_key' => 'wpupostviews_' . ($orig ? 'orig_' : '') . 'nbviews',
-            'orderby' => 'meta_value_num meta_value date',
+            'orderby' => 'meta_value_num meta_value date'
         ));
     }
 
@@ -117,7 +126,7 @@ class WPUPostViews {
 
     /* Settings link */
 
-    function add_settings_link($links) {
+    public function add_settings_link($links) {
         $settings_link = '<a href="' . $this->options['admin_url'] . '">' . __('Settings') . '</a>';
         array_unshift($links, $settings_link);
         return $links;
@@ -125,24 +134,24 @@ class WPUPostViews {
 
     /* Menu */
 
-    function admin_menu() {
-        add_options_page($this->options['plugin_name'] . ' - ' . __('Settings') , $this->options['plugin_publicname'], $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
+    public function admin_menu() {
+        add_options_page($this->options['plugin_name'] . ' - ' . __('Settings'), $this->options['plugin_publicname'], $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
             'admin_settings'
-        ) , '', 110);
+        ), '', 110);
     }
 
     /* Settings */
 
-    function admin_settings() {
+    public function admin_settings() {
         echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1>';
 
         $count_methods = array(
             'public' => array(
-                'name' => __('Top %s posts', 'wpupostviews') ,
+                'name' => __('Public top %s posts', 'wpupostviews'),
                 'orig' => false
-            ) ,
+            ),
             'orig' => array(
-                'name' => __('Real top %s posts', 'wpupostviews') ,
+                'name' => __('Real top %s posts', 'wpupostviews'),
                 'orig' => true
             )
         );
@@ -171,72 +180,22 @@ class WPUPostViews {
         echo '</div>';
     }
 
-    function add_settings() {
-        register_setting($this->settings_details['option_id'], $this->settings_details['option_id'], array(&$this,
-            'options_validate'
-        ));
-        $default_section = key($this->settings_details['sections']);
-        foreach ($this->settings_details['sections'] as $id => $section) {
-            add_settings_section($id, $section['name'], '', $this->options['plugin_id']);
-        }
-
-        foreach ($this->settings as $id => $input) {
-            $label = isset($input['label']) ? $input['label'] : '';
-            $label_check = isset($input['label_check']) ? $input['label_check'] : '';
-            $type = isset($input['type']) ? $input['type'] : 'text';
-            $section = isset($input['section']) ? $input['section'] : $default_section;
-            add_settings_field($id, $label, array(&$this,
-                'render__field'
-            ) , $this->options['plugin_id'], $section, array(
-                'name' => 'wpupostviews_options[' . $id . ']',
-                'id' => $id,
-                'label_for' => $id,
-                'type' => $type,
-                'label_check' => $label_check
-            ));
-        }
-    }
-
-    function options_validate($input) {
-        $options = get_option($this->settings_details['option_id']);
-        foreach ($this->settings as $id => $name) {
-            $options[$id] = esc_html(trim($input[$id]));
-        }
-        return $options;
-    }
-
-    function render__field($args = array()) {
-        $options = get_option($this->settings_details['option_id']);
-        $label_check = isset($args['label_check']) ? $args['label_check'] : '';
-        $type = isset($args['type']) ? $args['type'] : 'text';
-        $name = ' name="wpupostviews_options[' . $args['id'] . ']" ';
-        $id = ' id="' . $args['id'] . '" ';
-
-        switch ($type) {
-            case 'checkbox':
-                echo '<label><input type="checkbox" ' . $name . ' ' . $id . ' ' . checked($options[$args['id']], '1', 0) . ' value="1" /> ' . $label_check . '</label>';
-            break;
-            default:
-                echo '<input ' . $name . ' ' . $id . ' type="' . $type . '" value="' . esc_attr($options[$args['id']]) . '" />';
-        }
-    }
-
     /* ----------------------------------------------------------
       Meta box
     ---------------------------------------------------------- */
 
-    function add_meta_box() {
+    public function add_meta_box() {
         add_meta_box('wpupostviews_sectionid', $this->options['plugin_publicname'], array(&$this,
             'meta_box_callback'
-        ) , 'post', 'side');
+        ), 'post', 'side');
     }
 
-    function meta_box_callback($post) {
+    public function meta_box_callback($post) {
         $wpupostviews_nbviews = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
         $wpupostviews_orig_nbviews = get_post_meta($post->ID, 'wpupostviews_orig_nbviews', true);
         $real_str = '';
         if ($wpupostviews_orig_nbviews != $wpupostviews_nbviews) {
-            $real_str = '<br /><small>(' . sprintf(__('Real number: %s', 'wpupostviews') , '<strong>' . $wpupostviews_orig_nbviews . '</strong>') . ')</small>';
+            $real_str = '<br /><small>(' . sprintf(__('Real number: %s', 'wpupostviews'), '<strong>' . $wpupostviews_orig_nbviews . '</strong>') . ')</small>';
         }
         wp_nonce_field('wpupostviews_save_meta_box_data', 'wpupostviews_meta_box_nonce');
         echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
@@ -244,13 +203,13 @@ class WPUPostViews {
         echo $real_str;
         echo '<br /><br />';
         echo '<label for="wpupostviews_dntviews">';
-        echo '<input type="checkbox" id="wpupostviews_dntviews" name="wpupostviews_dntviews" value="1" ' . checked(get_post_meta($post->ID, 'wpupostviews_dntviews', true) , '1', 0) . ' />';
+        echo '<input type="checkbox" id="wpupostviews_dntviews" name="wpupostviews_dntviews" value="1" ' . checked(get_post_meta($post->ID, 'wpupostviews_dntviews', true), '1', 0) . ' />';
         echo __('Do not track views', 'wpupostviews') . '</label>';
 
-        echo '<div><small><br /><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews') , $this->options['default_top']) . '</a></small></div>';
+        echo '<div><small><br /><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews'), $this->options['default_top']) . '</a></small></div>';
     }
 
-    function save_meta_box_data($post_id) {
+    public function save_meta_box_data($post_id) {
         if ((defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || !isset($_POST['wpupostviews_meta_box_nonce']) || !wp_verify_nonce($_POST['wpupostviews_meta_box_nonce'], 'wpupostviews_save_meta_box_data')) {
             return;
         }
@@ -259,8 +218,7 @@ class WPUPostViews {
         }
 
         // Do not track views
-        $wpupostviews_dntviews = (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0';
-        update_post_meta($post_id, 'wpupostviews_dntviews', $wpupostviews_dntviews);
+        update_post_meta($post_id, 'wpupostviews_dntviews', (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0');
 
         // Number of views
         if (!isset($_POST['wpupostviews_nbviews']) || !is_numeric($_POST['wpupostviews_nbviews'])) {
@@ -273,41 +231,38 @@ class WPUPostViews {
       Tracking
     ---------------------------------------------------------- */
 
-    function js_callback() {
+    public function js_callback() {
         if (!is_singular()) {
             return;
         }
 
         $options = get_option($this->settings_details['option_id']);
         $script_settings = array(
-            'ajax_url' => admin_url('admin-ajax.php') ,
-            'post_id' => get_the_ID() ,
-            'cookie_days' => isset($options['cookie_days']) ? $options['cookie_days'] : apply_filters('wpupostviews_default_cookie_days', '10') ,
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'post_id' => get_the_ID(),
+            'dntviews' => get_post_meta(get_the_ID(), 'wpupostviews_dntviews', 1),
+            'cookie_days' => isset($options['cookie_days']) && is_numeric($options['cookie_days']) ? $options['cookie_days'] : apply_filters('wpupostviews_default_cookie_days', 10),
             'use_cookie' => (isset($options['use_cookie']) && $options['use_cookie'] == '1') ? '1' : '0',
-            'no_bots' => (isset($options['no_bots']) && $options['no_bots'] == '1') ? '1' : '0',
+            'no_bots' => (isset($options['no_bots']) && $options['no_bots'] == '1') ? '1' : '0'
         );
 
-        wp_enqueue_script('wpupostviews-tracker', plugins_url('/assets/js/tracker.js', __FILE__) , array(
+        wp_enqueue_script('wpupostviews-tracker', plugins_url('/assets/js/tracker.js', __FILE__), array(
             'jquery'
-        ));
+        ), $this->version);
 
         wp_localize_script('wpupostviews-tracker', 'wpupostviews_object', $script_settings);
     }
 
-    function track_view() {
+    public function track_view() {
         $no_loggedin = (isset($options['no_loggedin']) && $options['no_loggedin'] == '1');
         $post_id = intval($_POST['post_id']);
         if (!is_numeric($post_id)) {
-
             return;
         }
         if ($no_loggedin && is_user_logged_in()) {
-
             return;
         }
-        $wpupostviews_dntviews = get_post_meta($post_id, 'wpupostviews_dntviews', 1);
-        if ($wpupostviews_dntviews == '1') {
-
+        if (get_post_meta($post_id, 'wpupostviews_dntviews', 1) == '1') {
             return;
         }
         $nb_views = intval(get_post_meta($post_id, 'wpupostviews_nbviews', 1));
@@ -319,7 +274,7 @@ class WPUPostViews {
 
     /* Uninstall */
 
-    function uninstall() {
+    public function uninstall() {
         delete_option('wpupostviews_options');
         delete_post_meta_by_key('wpupostviews_nbviews');
         delete_post_meta_by_key('wpupostviews_orig_nbviews');
