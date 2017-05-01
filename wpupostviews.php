@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.6.1
+Version: 0.8.0
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -55,6 +55,7 @@ class WPUPostViews {
             'plugin_userlevel' => 'manage_options',
             'plugin_id' => 'wpupostviews',
             'plugin_pageslug' => 'wpupostviews',
+            'post_types' => apply_filters('wpupostviews_post_types', array('post')),
             'default_top' => apply_filters('wpupostviews_default_top', 10)
         );
         $this->options['admin_url'] = admin_url('options-general.php?page=' . $this->options['plugin_id']);
@@ -115,6 +116,7 @@ class WPUPostViews {
         }
         return get_posts(array(
             'posts_per_page' => $nb,
+            'post_type' => $this->options['post_types'],
             'meta_key' => 'wpupostviews_' . ($orig ? 'orig_' : '') . 'nbviews',
             'orderby' => 'meta_value_num meta_value date'
         ));
@@ -187,11 +189,14 @@ class WPUPostViews {
     public function add_meta_box() {
         add_meta_box('wpupostviews_sectionid', $this->options['plugin_publicname'], array(&$this,
             'meta_box_callback'
-        ), 'post', 'side');
+        ), $this->options['post_types'], 'side');
     }
 
     public function meta_box_callback($post) {
         $wpupostviews_nbviews = get_post_meta($post->ID, 'wpupostviews_nbviews', true);
+        if (!$wpupostviews_nbviews) {
+            $wpupostviews_nbviews = 0;
+        }
         $wpupostviews_orig_nbviews = get_post_meta($post->ID, 'wpupostviews_orig_nbviews', true);
         $real_str = '';
         if ($wpupostviews_orig_nbviews != $wpupostviews_nbviews) {
@@ -221,10 +226,9 @@ class WPUPostViews {
         update_post_meta($post_id, 'wpupostviews_dntviews', (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0');
 
         // Number of views
-        if (!isset($_POST['wpupostviews_nbviews']) || !is_numeric($_POST['wpupostviews_nbviews'])) {
-            return;
+        if (isset($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_nbviews'])) {
+            update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
         }
-        update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
     }
 
     /* ----------------------------------------------------------
@@ -232,7 +236,16 @@ class WPUPostViews {
     ---------------------------------------------------------- */
 
     public function js_callback() {
-        if (!is_singular()) {
+        if (!is_singular() || is_home() || is_front_page()) {
+            return;
+        }
+
+        if (!in_array(get_post_type(), $this->options['post_types'])) {
+            return;
+        }
+
+        $dntviews = get_post_meta(get_the_ID(), 'wpupostviews_dntviews', 1);
+        if ($dntviews == '1') {
             return;
         }
 
@@ -240,7 +253,7 @@ class WPUPostViews {
         $script_settings = array(
             'ajax_url' => admin_url('admin-ajax.php'),
             'post_id' => get_the_ID(),
-            'dntviews' => get_post_meta(get_the_ID(), 'wpupostviews_dntviews', 1),
+            'dntviews' => $dntviews,
             'cookie_days' => isset($options['cookie_days']) && is_numeric($options['cookie_days']) ? $options['cookie_days'] : apply_filters('wpupostviews_default_cookie_days', 10),
             'use_cookie' => (isset($options['use_cookie']) && $options['use_cookie'] == '1') ? '1' : '0',
             'no_bots' => (isset($options['no_bots']) && $options['no_bots'] == '1') ? '1' : '0'
@@ -248,7 +261,7 @@ class WPUPostViews {
 
         wp_enqueue_script('wpupostviews-tracker', plugins_url('/assets/js/tracker.js', __FILE__), array(
             'jquery'
-        ), $this->version);
+        ), $this->version, 1);
 
         wp_localize_script('wpupostviews-tracker', 'wpupostviews_object', $script_settings);
     }

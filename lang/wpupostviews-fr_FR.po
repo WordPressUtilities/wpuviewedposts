@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: WPU Options\n"
-"POT-Creation-Date: 2017-04-30 11:24+0200\n"
+"POT-Creation-Date: 2017-05-01 13:44+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Darklg <darklg.blog@gmail.com>\n"
 "Language-Team: \n"
@@ -20,8 +20,8 @@ msgid "Import Settings"
 msgstr "Réglages d'import"
 
 #: .././inc/WPUBaseSettings.php:98 .././inc/WPUBaseSettings.php:389
-#: .././wpupostviews.php:130 .././wpupostviews.php:138
-#: .././wpupostviews.php:174
+#: .././wpupostviews.php:131 .././wpupostviews.php:139
+#: .././wpupostviews.php:175
 msgid "Settings"
 msgstr "Réglages"
 
@@ -45,70 +45,70 @@ msgstr "Ajouter un nouveau média"
 msgid "Save"
 msgstr "Enregistrer"
 
-#: .././wpupostviews.php:66
+#: .././wpupostviews.php:67
 msgid "Cookie"
 msgstr "Cookie"
 
-#: .././wpupostviews.php:69
+#: .././wpupostviews.php:70
 msgid "Tracking"
 msgstr "Suivi"
 
-#: .././wpupostviews.php:75
+#: .././wpupostviews.php:76
 msgid "Use a cookie"
 msgstr "Utiliser un cookie"
 
-#: .././wpupostviews.php:76
+#: .././wpupostviews.php:77
 msgid "Use a cookie to count only one view per visitor per post."
 msgstr "Utiliser un cookie pour compter une seule vue par visiteur par post."
 
-#: .././wpupostviews.php:80
+#: .././wpupostviews.php:81
 msgid "Expiration (in days)"
 msgstr "Expiration (en jours)"
 
-#: .././wpupostviews.php:85
+#: .././wpupostviews.php:86
 msgid "Ignore logged in users"
 msgstr "Ignorer les utilisateurs connectés"
 
-#: .././wpupostviews.php:86
+#: .././wpupostviews.php:87
 msgid "Do not track views by logged in users."
 msgstr "Ne pas compter les vues des utilisateurs connectés."
 
-#: .././wpupostviews.php:91
+#: .././wpupostviews.php:92
 msgid "Dont count bots"
 msgstr "Ignorer les bots"
 
-#: .././wpupostviews.php:92
+#: .././wpupostviews.php:93
 msgid "Do not track views from bots and crawlers."
 msgstr "Ne pas compter les vues des bots et crawlers."
 
-#: .././wpupostviews.php:150
+#: .././wpupostviews.php:151
 #, php-format
 msgid "Public top %s posts"
 msgstr "Top %s articles public"
 
-#: .././wpupostviews.php:154
+#: .././wpupostviews.php:155
 #, php-format
 msgid "Real top %s posts"
 msgstr "Top %s articles réel"
 
-#: .././wpupostviews.php:178
+#: .././wpupostviews.php:179
 msgid "Save Changes"
 msgstr "Sauvegarder"
 
-#: .././wpupostviews.php:198
+#: .././wpupostviews.php:202
 #, php-format
 msgid "Real number: %s"
 msgstr "Nombre réel : %s"
 
-#: .././wpupostviews.php:201
+#: .././wpupostviews.php:205
 msgid "Number of views"
 msgstr "Nombre de vues"
 
-#: .././wpupostviews.php:207
+#: .././wpupostviews.php:211
 msgid "Do not track views"
 msgstr "Ne pas compter les vues"
 
-#: .././wpupostviews.php:209
+#: .././wpupostviews.php:213
 #, php-format
 msgid "Top %s posts"
 msgstr "Top %s articles"
