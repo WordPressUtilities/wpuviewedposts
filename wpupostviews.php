@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.9.0
+Version: 0.10.0
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -12,11 +12,11 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUPostViews {
-    public $version = '0.9.0';
+    public $plugin_version = '0.10.0';
     public $options;
     public function __construct() {
         add_action('plugins_loaded', array(&$this,
-            'load_plugin_textdomain'
+            'load_extras'
         ));
         add_action('plugins_loaded', array(&$this,
             'set_options'
@@ -47,8 +47,14 @@ class WPUPostViews {
         ));
     }
 
-    public function load_plugin_textdomain() {
+    public function load_extras() {
         load_plugin_textdomain('wpupostviews', false, dirname(plugin_basename(__FILE__)) . '/lang/');
+
+        include 'inc/WPUBaseUpdate/WPUBaseUpdate.php';
+        $this->settings_update = new \wpupostviews\WPUBaseUpdate(
+            'WordPressUtilities',
+            'wpupostviews',
+            $this->plugin_version);
     }
 
     public function set_options() {
@@ -99,7 +105,7 @@ class WPUPostViews {
         );
 
         if (is_admin()) {
-            include 'inc/WPUBaseSettings.php';
+            include 'inc/WPUBaseSettings/WPUBaseSettings.php';
             $settings_obj = new \wpupostviews\WPUBaseSettings($this->settings_details, $this->settings);
 
             ## if no auto create_page and medias ##
@@ -217,14 +223,20 @@ class WPUPostViews {
         }
         wp_nonce_field('wpupostviews_save_meta_box_data', 'wpupostviews_meta_box_nonce');
         echo '<label for="wpupostviews_nbviews">' . __('Number of views', 'wpupostviews') . ' : </label><br />';
-        echo '<input type="number" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($wpupostviews_nbviews) . '" />';
+        echo '<input type="number" onchange="document.getElementById(\'wpupostviews_update_count_wrapper\').style.display=\'block\';document.getElementById(\'wpupostviews_update_count\').checked=true" id="wpupostviews_nbviews" name="wpupostviews_nbviews" value="' . esc_attr($wpupostviews_nbviews) . '" />';
         echo $real_str;
-        echo '<br /><br />';
+        echo '<p id="wpupostviews_update_count_wrapper" style="display:none;">';
+        echo '<label for="wpupostviews_update_count">';
+        echo '<input type="checkbox" id="wpupostviews_update_count" name="wpupostviews_update_count" value="1" />';
+        echo __('Update counter', 'wpupostviews') . '</label>';
+        echo '</p>';
+        echo '<p>';
         echo '<label for="wpupostviews_dntviews">';
         echo '<input type="checkbox" id="wpupostviews_dntviews" name="wpupostviews_dntviews" value="1" ' . checked(get_post_meta($post->ID, 'wpupostviews_dntviews', true), '1', 0) . ' />';
-        echo __('Do not track views', 'wpupostviews') . '</label>';
+        echo __('Do not track views for this post', 'wpupostviews') . '</label>';
+        echo '</p>';
 
-        echo '<div><small><br /><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews'), $this->options['default_top']) . '</a></small></div>';
+        echo '<div><small><a href="' . $this->options['admin_url'] . '">→ ' . sprintf(__('Top %s posts', 'wpupostviews'), $this->options['default_top']) . '</a></small></div>';
     }
 
     public function save_meta_box_data($post_id) {
@@ -239,7 +251,7 @@ class WPUPostViews {
         update_post_meta($post_id, 'wpupostviews_dntviews', (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0');
 
         // Number of views
-        if (isset($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_nbviews'])) {
+        if (isset($_POST['wpupostviews_nbviews'],$_POST['wpupostviews_update_count']) && is_numeric($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_update_count'])) {
             update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
         }
     }
@@ -274,7 +286,7 @@ class WPUPostViews {
 
         wp_enqueue_script('wpupostviews-tracker', plugins_url('/assets/js/tracker.js', __FILE__), array(
             'jquery'
-        ), $this->version, 1);
+        ), $this->plugin_version, 1);
 
         wp_localize_script('wpupostviews-tracker', 'wpupostviews_object', $script_settings);
     }

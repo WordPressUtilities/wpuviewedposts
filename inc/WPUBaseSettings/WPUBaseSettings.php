@@ -4,7 +4,7 @@ namespace wpupostviews;
 /*
 Class Name: WPU Base Settings
 Description: A class to handle native settings in WordPress admin
-Version: 0.9.2
+Version: 0.13.0
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -15,13 +15,16 @@ class WPUBaseSettings {
 
     private $hook_page = false;
     private $has_media_setting = false;
+    private $admin_url = false;
+    private $is_admin_page = false;
+    private $has_create_page = false;
 
     public function __construct($settings_details = array(), $settings = array()) {
         if (empty($settings_details) || empty($settings)) {
             return;
         }
-        $this->set_datas($settings_details, $settings);
 
+        $this->set_datas($settings_details, $settings);
         $this->has_media_setting = false;
         foreach ($this->settings as $setting) {
             if ($setting['type'] == 'media') {
@@ -29,32 +32,57 @@ class WPUBaseSettings {
             }
         }
 
+        $this->is_admin_page = isset($_GET['page']) && $_GET['page'] == $this->settings_details['plugin_id'];
+        $this->has_create_page = isset($settings_details['create_page']) && $settings_details['create_page'];
+
+        $opt = $this->get_settings();
         add_action('admin_init', array(&$this,
             'add_settings'
         ));
         add_filter('option_page_capability_' . $this->settings_details['option_id'], array(&$this,
             'set_min_capability'
         ));
-
-        if (isset($settings_details['create_page']) && $settings_details['create_page']) {
+        add_action('admin_notices', array(&$this,
+            'admin_notices'
+        ));
+        if ($this->has_create_page) {
             add_action('admin_menu', array(&$this,
                 'admin_menu'
             ));
+            $this->admin_url = admin_url($this->settings_details['parent_page'] . '?page=' . $this->settings_details['plugin_id']);
+            if (isset($settings_details['plugin_basename'])) {
+                add_filter("plugin_action_links_" . $settings_details['plugin_basename'], array(&$this, 'plugin_add_settings_link'));
+            }
         } else {
             add_action('init', array(&$this, 'load_assets'));
         }
     }
 
+    public function admin_notices() {
+        if (!$this->is_admin_page) {
+            return;
+        }
+        if ($this->settings_details['parent_page'] == 'options-general.php') {
+            return;
+        }
+        settings_errors();
+    }
+
     public function get_settings() {
         $opt = get_option($this->settings_details['option_id']);
         if (!is_array($opt)) {
-            $opt = array();
+            /* Set default values */
+            $opt = $this->get_setting_values();
+            update_option($this->settings_details['option_id'], $opt);
         }
         return $opt;
     }
 
-    public function get_setting($id) {
+    public function get_setting($id, $lang = false) {
         $opt = $this->get_settings();
+        if ($lang === true) {
+            $id = $this->get_current_language() . '__' . $id;
+        }
         if (isset($opt[$id])) {
             return $opt[$id];
         }
@@ -73,15 +101,10 @@ class WPUBaseSettings {
 
     public function set_datas($settings_details, $settings) {
         if (!is_array($settings_details)) {
-            $settings_details = array(
-                'plugin_id' => 'wpubasesettingsdefault',
-                'option_id' => 'wpubasesettingsdefault_options',
-                'sections' => array(
-                    'import' => array(
-                        'name' => __('Import Settings', 'wpubasesettingsdefault')
-                    )
-                )
-            );
+            $settings_details = array();
+        }
+        if (!isset($settings_details['plugin_id'])) {
+            $settings_details['plugin_id'] = 'wpubasesettingsdefault';
         }
         if (!isset($settings_details['user_cap'])) {
             $settings_details['user_cap'] = 'manage_options';
@@ -92,6 +115,12 @@ class WPUBaseSettings {
         if (!isset($settings_details['parent_page'])) {
             $settings_details['parent_page'] = 'options-general.php';
         }
+        if (!isset($settings_details['plugin_name'])) {
+            $settings_details['plugin_name'] = $settings_details['plugin_id'];
+        }
+        if (!isset($settings_details['show_in_rest'])) {
+            $settings_details['show_in_rest'] = false;
+        }
         if (!isset($settings_details['sections']) || empty($settings_details['sections'])) {
             $settings_details['sections'] = array(
                 'default' => array(
@@ -101,7 +130,7 @@ class WPUBaseSettings {
         }
         foreach ($settings_details['sections'] as $id => $section) {
             if (!isset($section['user_cap'])) {
-                $settings_details['sections'][$id]['user_cap'] = 'manage_options';
+                $settings_details['sections'][$id]['user_cap'] = $settings_details['user_cap'];
             }
         }
         $this->settings_details = $settings_details;
@@ -118,7 +147,7 @@ class WPUBaseSettings {
         $default_section = key($this->settings_details['sections']);
         foreach ($settings as $id => $input) {
             $settings[$id]['label'] = isset($input['label']) ? $input['label'] : '';
-            $settings[$id]['label_check'] = isset($input['label_check']) ? $input['label_check'] : '';
+            $settings[$id]['label_check'] = isset($input['label_check']) ? $input['label_check'] : $settings[$id]['label'];
             $settings[$id]['help'] = isset($input['help']) ? $input['help'] : '';
             $settings[$id]['type'] = isset($input['type']) ? $input['type'] : 'text';
             $settings[$id]['section'] = isset($input['section']) ? $input['section'] : $default_section;
@@ -126,16 +155,42 @@ class WPUBaseSettings {
             $settings[$id]['user_cap'] = $this->settings_details['sections'][$settings[$id]['section']]['user_cap'];
         }
 
-        $this->settings = $settings;
+        $languages = $this->get_languages();
+
+        /* Set multilingual fields */
+        $new_settings = array();
+        foreach ($settings as $id => $input) {
+            if (!isset($input['lang']) || empty($languages)) {
+                $new_settings[$id] = $input;
+                continue;
+            }
+            foreach ($languages as $lang) {
+                $input_lang = $input;
+                unset($input_lang['lang']);
+                $input_lang['translated_from'] = $id;
+                $input_lang['lang_id'] = $lang;
+                $input_lang['label'] = '[' . $lang . ']&nbsp;' . $input_lang['label'];
+                $new_settings[$lang . '__' . $id] = $input_lang;
+            }
+
+        }
+
+        $this->settings = $new_settings;
     }
 
     public function add_settings() {
-        register_setting($this->settings_details['option_id'], $this->settings_details['option_id'], array(&$this,
-            'options_validate'
+        register_setting($this->settings_details['option_id'], $this->settings_details['option_id'], array(
+            'sanitize_callback' => array(&$this, 'options_validate'),
+            'show_in_rest' => $this->settings_details,
+            'default' => array()
         ));
         foreach ($this->settings_details['sections'] as $id => $section) {
             if (current_user_can($section['user_cap'])) {
-                add_settings_section($id, $section['name'], '', $this->settings_details['plugin_id']);
+                add_settings_section($id,
+                    $section['name'],
+                    isset($section['description']) ? $section['description'] : '',
+                    $this->settings_details['plugin_id']
+                );
             }
         }
 
@@ -184,8 +239,9 @@ class WPUBaseSettings {
             }
             switch ($setting['type']) {
             case 'checkbox':
-                $option_id = isset($input[$id]) ? '1' : '0';
+                $option_id = isset($input[$id]) && !in_array($input[$id], array('0', '')) ? '1' : '0';
                 break;
+            case 'radio':
             case 'select':
                 if (!array_key_exists($input[$id], $setting['datas'])) {
                     $option_id = key($setting['datas']);
@@ -261,6 +317,14 @@ class WPUBaseSettings {
             echo '<button type="button" class="button">' . __('Upload New Media') . '</button>';
             echo '</div>';
             break;
+        case 'radio':
+            foreach ($args['datas'] as $_id => $_data) {
+                echo '<p>';
+                echo '<input id="' . $args['id'] . $_id . '" type="radio" ' . $name . ' value="' . esc_attr($_id) . '" ' . ($value == $_id ? 'checked="checked"' : '') . ' />';
+                echo '<label class="wpubasesettings-radio-label" for="' . $args['id'] . $_id . '">' . $_data . '</label>';
+                echo '</p>';
+            }
+            break;
         case 'select':
             echo '<select ' . $name . ' ' . $id . '>';
             foreach ($args['datas'] as $_id => $_data) {
@@ -269,10 +333,14 @@ class WPUBaseSettings {
             echo '</select>';
             break;
         case 'editor':
-            wp_editor($value, $option_id . '_' . $args['id'], array(
-                'textarea_rows' => 3,
+            $editor_args = array(
+                'textarea_rows' => isset($args['textarea_rows']) && is_numeric($args['textarea_rows']) ? $args['textarea_rows'] : 3,
                 'textarea_name' => $name_val
-            ));
+            );
+            if (isset($args['editor_args']) && is_array($args['editor_args'])) {
+                $editor_args = $args['editor_args'];
+            }
+            wp_editor($value, $option_id . '_' . $args['id'], $editor_args);
             break;
         case 'url':
         case 'number':
@@ -370,7 +438,6 @@ jQuery('.wpubasesettings-mediabox .button').click(function(e) {
         \$imgPreview.find('img').attr('src',attachment.url);
         // Send the attachment id to our hidden input
         \$imgField.val(attachment.id);
-        console.log(\$imgField);
     });
 
     // Finally, open the modal on click
@@ -392,11 +459,19 @@ EOT;
         add_action('load-' . $this->hook_page, array(&$this, 'load_assets'));
     }
 
+    public function plugin_add_settings_link($links) {
+        $settings_link = '<a href="' . $this->admin_url . '">' . __('Settings') . '</a>';
+        array_push($links, $settings_link);
+        return $links;
+    }
+
     public function admin_settings() {
-        echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1>';
+        echo '<div class="wrap">';
+        do_action('wpubasesettings_after_wrap_start' . $this->hook_page);
+        echo apply_filters('wpubasesettings_page_title_' . $this->hook_page, '<h1>' . get_admin_page_title() . '</h1>');
         do_action('wpubasesettings_before_content_' . $this->hook_page);
         if (current_user_can($this->settings_details['user_cap'])) {
-            echo '<hr />';
+            echo apply_filters('wpubasesettings_before_form_' . $this->hook_page, '<hr />');
             echo '<form action="' . admin_url('options.php') . '" method="post">';
             settings_fields($this->settings_details['option_id']);
             do_settings_sections($this->settings_details['plugin_id']);
@@ -404,8 +479,84 @@ EOT;
             echo '</form>';
         }
         do_action('wpubasesettings_after_content_' . $this->hook_page);
+        do_action('wpubasesettings_before_wrap_end' . $this->hook_page);
         echo '</div>';
     }
+
+    /* Get settings */
+
+    public function get_setting_values($lang = false) {
+        if (!isset($this->settings) || !is_array($this->settings)) {
+            return array();
+        }
+        if (!$lang) {
+            $lang = $this->get_current_language();
+        }
+        $settings = get_option($this->settings_details['option_id']);
+        if (!is_array($settings)) {
+            $settings = array();
+        }
+        foreach ($this->settings as $key => $setting) {
+            /* Default fields */
+            if (!isset($settings[$key]) && !isset($setting['translated_from'])) {
+                $default_value = false;
+                if (isset($this->settings[$key], $this->settings[$key]['default'])) {
+                    $default_value = $this->settings[$key]['default'];
+                }
+                $settings[$key] = $default_value;
+            }
+            if (isset($setting['translated_from'], $setting['lang_id'], $settings[$key]) && $lang == $setting['lang_id'] && $settings[$key] !== false) {
+                $settings[$setting['translated_from']] = $settings[$key];
+            }
+        }
+        return $settings;
+    }
+
+    public function get_languages() {
+        // Obtaining from Qtranslate
+        if (function_exists('qtrans_getSortedLanguages')) {
+            return qtrans_getSortedLanguages();
+        }
+
+        // Obtaining from Qtranslate X
+        if (function_exists('qtranxf_getSortedLanguages')) {
+            return qtranxf_getSortedLanguages();
+        }
+
+        // Obtaining from Polylang
+        global $polylang;
+        if (function_exists('pll_the_languages') && is_object($polylang)) {
+            $poly_langs = $polylang->model->get_languages_list();
+            $languages = array();
+            foreach ($poly_langs as $lang) {
+                $languages[$lang->slug] = $lang->slug;
+            }
+            return $languages;
+        }
+
+        return array();
+
+    }
+
+    public function get_current_language() {
+        // Obtaining from Qtranslate
+        if (function_exists('qtrans_getLanguage')) {
+            return qtrans_getLanguage();
+        }
+
+        // Obtaining from Qtranslate X
+        if (function_exists('qtranxf_getLanguage')) {
+            return qtranxf_getLanguage();
+        }
+
+        // Obtaining from Polylang
+        if (function_exists('pll_current_language')) {
+            return pll_current_language();
+        }
+
+        return '';
+    }
+
 }
 
 /*
