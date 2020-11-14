@@ -1,4 +1,4 @@
-var wpupostviews_object = wpupostviews_object ||  {};
+var wpupostviews_object = wpupostviews_object || {};
 
 jQuery(document).ready(function wpupostviews_domready() {
     'use strict';

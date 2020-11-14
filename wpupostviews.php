@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.10.1
+Version: 0.10.2
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -12,7 +12,7 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUPostViews {
-    public $plugin_version = '0.10.1';
+    public $plugin_version = '0.10.2';
     public $options;
     public function __construct() {
         add_action('plugins_loaded', array(&$this,
