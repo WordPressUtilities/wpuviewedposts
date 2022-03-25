@@ -4,7 +4,7 @@
 Plugin Name: WPU Post views
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Track most viewed posts
-Version: 0.10.2
+Version: 0.10.3
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -12,7 +12,7 @@ License URI: http://opensource.org/licenses/MIT
 */
 
 class WPUPostViews {
-    public $plugin_version = '0.10.2';
+    public $plugin_version = '0.10.3';
     public $options;
     public function __construct() {
         add_action('plugins_loaded', array(&$this,
@@ -158,7 +158,7 @@ class WPUPostViews {
     public function admin_menu() {
         add_options_page($this->options['plugin_name'] . ' - ' . __('Settings'), $this->options['plugin_publicname'], $this->options['plugin_userlevel'], $this->options['plugin_pageslug'], array(&$this,
             'admin_settings'
-        ),  110);
+        ), 110);
     }
 
     /* Settings */
@@ -206,6 +206,9 @@ class WPUPostViews {
     ---------------------------------------------------------- */
 
     public function add_meta_box() {
+        if (!current_user_can(apply_filters('wpupostviews_min_level', 'delete_private_pages'))) {
+            return;
+        }
         add_meta_box('wpupostviews_sectionid', $this->options['plugin_publicname'], array(&$this,
             'meta_box_callback'
         ), $this->options['post_types'], 'side');
@@ -251,7 +254,7 @@ class WPUPostViews {
         update_post_meta($post_id, 'wpupostviews_dntviews', (isset($_POST['wpupostviews_dntviews']) && $_POST['wpupostviews_dntviews'] == 1) ? '1' : '0');
 
         // Number of views
-        if (isset($_POST['wpupostviews_nbviews'],$_POST['wpupostviews_update_count']) && is_numeric($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_update_count'])) {
+        if (isset($_POST['wpupostviews_nbviews'], $_POST['wpupostviews_update_count']) && is_numeric($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_update_count'])) {
             update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
         }
     }

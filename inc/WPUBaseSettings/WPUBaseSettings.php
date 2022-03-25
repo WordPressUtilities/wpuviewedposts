@@ -4,7 +4,7 @@ namespace wpupostviews;
 /*
 Class Name: WPU Base Settings
 Description: A class to handle native settings in WordPress admin
-Version: 0.13.1
+Version: 0.17.2
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -18,12 +18,17 @@ class WPUBaseSettings {
     private $admin_url = false;
     private $is_admin_page = false;
     private $has_create_page = false;
+    public $settings = array();
+    public $settings_details = array();
 
     public function __construct($settings_details = array(), $settings = array()) {
+        $this->init($settings_details, $settings);
+    }
+
+    public function init($settings_details = array(), $settings = array()) {
         if (empty($settings_details) || empty($settings)) {
             return;
         }
-
         $this->set_datas($settings_details, $settings);
         $this->has_media_setting = false;
         foreach ($this->settings as $setting) {
@@ -49,7 +54,7 @@ class WPUBaseSettings {
             add_action('admin_menu', array(&$this,
                 'admin_menu'
             ));
-            $this->admin_url = admin_url($this->settings_details['parent_page'] . '?page=' . $this->settings_details['plugin_id']);
+            $this->admin_url = admin_url($this->settings_details['parent_page_url'] . '?page=' . $this->settings_details['plugin_id']);
             if (isset($settings_details['plugin_basename'])) {
                 add_filter("plugin_action_links_" . $settings_details['plugin_basename'], array(&$this, 'plugin_add_settings_link'));
             }
@@ -115,6 +120,9 @@ class WPUBaseSettings {
         if (!isset($settings_details['parent_page'])) {
             $settings_details['parent_page'] = 'options-general.php';
         }
+        if (!isset($settings_details['parent_page_url'])) {
+            $settings_details['parent_page_url'] = $settings_details['parent_page'];
+        }
         if (!isset($settings_details['plugin_name'])) {
             $settings_details['plugin_name'] = $settings_details['plugin_id'];
         }
@@ -146,12 +154,15 @@ class WPUBaseSettings {
 
         $default_section = key($this->settings_details['sections']);
         foreach ($settings as $id => $input) {
+            $settings[$id]['required'] = isset($input['required']) ? $input['required'] : false;
+            $settings[$id]['default_value'] = isset($input['default_value']) ? $input['default_value'] : '';
             $settings[$id]['label'] = isset($input['label']) ? $input['label'] : '';
             $settings[$id]['label_check'] = isset($input['label_check']) ? $input['label_check'] : $settings[$id]['label'];
             $settings[$id]['help'] = isset($input['help']) ? $input['help'] : '';
             $settings[$id]['type'] = isset($input['type']) ? $input['type'] : 'text';
             $settings[$id]['section'] = isset($input['section']) ? $input['section'] : $default_section;
             $settings[$id]['datas'] = isset($input['datas']) && is_array($input['datas']) ? $input['datas'] : array(__('No'), __('Yes'));
+            $settings[$id]['editor_args'] = isset($input['editor_args']) && is_array($input['editor_args']) ? $input['editor_args'] : array();
             $settings[$id]['user_cap'] = $this->settings_details['sections'][$settings[$id]['section']]['user_cap'];
         }
 
@@ -164,7 +175,7 @@ class WPUBaseSettings {
                 $new_settings[$id] = $input;
                 continue;
             }
-            foreach ($languages as $lang) {
+            foreach ($languages as $lang => $lang_name) {
                 $input_lang = $input;
                 unset($input_lang['lang']);
                 $input_lang['translated_from'] = $id;
@@ -199,15 +210,23 @@ class WPUBaseSettings {
             if (!current_user_can($input['user_cap'])) {
                 continue;
             }
+            $lang_id = '';
+            if (isset($input['lang_id'])) {
+                $lang_id = $input['lang_id'];
+            }
             add_settings_field($id, $this->settings[$id]['label'], array(&$this,
                 'render__field'
             ), $this->settings_details['plugin_id'], $this->settings[$id]['section'], array(
                 'name' => $this->settings_details['option_id'] . '[' . $id . ']',
                 'id' => $id,
+                'lang_id' => $lang_id,
                 'label_for' => $id,
+                'required' => $this->settings[$id]['required'],
                 'datas' => $this->settings[$id]['datas'],
                 'type' => $this->settings[$id]['type'],
                 'help' => $this->settings[$id]['help'],
+                'default_value' => $this->settings[$id]['default_value'],
+                'editor_args' => $this->settings[$id]['editor_args'],
                 'label_check' => $this->settings[$id]['label_check']
             ));
         }
@@ -257,6 +276,8 @@ class WPUBaseSettings {
                     $option_id = '';
                 }
                 break;
+            case 'post':
+            case 'page':
             case 'media':
             case 'number':
                 if (!is_numeric($input[$id])) {
@@ -289,7 +310,15 @@ class WPUBaseSettings {
         $name_val = $option_id . '[' . $args['id'] . ']';
         $name = ' name="' . $name_val . '" ';
         $id = ' id="' . $args['id'] . '" ';
-        $value = isset($options[$args['id']]) ? $options[$args['id']] : '';
+        $attr = '';
+        if (isset($args['lang_id']) && $args['lang_id']) {
+            $attr .= ' data-wpulang="' . esc_attr($args['lang_id']) . '" ';
+        }
+        if (isset($args['required']) && $args['required']) {
+            $attr .= ' required="required" ';
+        }
+        $id .= $attr;
+        $value = isset($options[$args['id']]) ? $options[$args['id']] : $args['default_value'] ;
 
         switch ($args['type']) {
         case 'checkbox':
@@ -325,6 +354,15 @@ class WPUBaseSettings {
                 echo '</p>';
             }
             break;
+        case 'post':
+        case 'page':
+            wp_dropdown_pages(array(
+                'name' => $name_val,
+                'id' => $args['id'],
+                'selected' => $value,
+                'post_type' => isset($args['post_type']) ? $args['post_type'] : $args['type']
+            ));
+            break;
         case 'select':
             echo '<select ' . $name . ' ' . $id . '>';
             foreach ($args['datas'] as $_id => $_data) {
@@ -335,12 +373,13 @@ class WPUBaseSettings {
         case 'editor':
             $editor_args = array(
                 'textarea_rows' => isset($args['textarea_rows']) && is_numeric($args['textarea_rows']) ? $args['textarea_rows'] : 3,
-                'textarea_name' => $name_val
             );
             if (isset($args['editor_args']) && is_array($args['editor_args'])) {
                 $editor_args = $args['editor_args'];
             }
+            $editor_args['textarea_name'] = $name_val;
             wp_editor($value, $option_id . '_' . $args['id'], $editor_args);
+            echo '<span ' . $attr . '></span>';
             break;
         case 'url':
         case 'number':
@@ -361,6 +400,8 @@ class WPUBaseSettings {
 
     /* Media */
     public function load_assets() {
+        add_action('admin_footer', array(&$this, 'admin_footer'));
+
         if (!$this->has_media_setting) {
             return;
         }
@@ -368,7 +409,7 @@ class WPUBaseSettings {
         add_action('admin_print_scripts', array(&$this, 'admin_scripts'));
         add_action('admin_print_styles', array(&$this, 'admin_styles'));
         add_action('admin_head', array(&$this, 'admin_head'));
-        add_action('admin_footer', array(&$this, 'admin_footer'));
+        add_action('admin_footer', array(&$this, 'admin_footer_medias'));
     }
 
     public function admin_scripts() {
@@ -408,7 +449,7 @@ class WPUBaseSettings {
 EOT;
     }
 
-    public function admin_footer() {
+    public function admin_footer_medias() {
         echo <<<EOT
 <script>
 /* Delete image */
@@ -446,6 +487,60 @@ jQuery('.wpubasesettings-mediabox .button').click(function(e) {
     e.preventDefault();
 });
 
+</script>
+EOT;
+    }
+
+    public function admin_footer() {
+        $option_id = $this->settings_details['option_id'];
+        $languages = json_encode($this->get_languages());
+        $label_txt = __('Language');
+        echo <<<EOT
+<script>
+(function(){
+/* Check langs */
+var _langs = ${languages};
+if(!_langs){
+    return;
+}
+
+/* Get items */
+var jQinput = jQuery('input[type="hidden"][name="option_page"][value="${option_id}"]');
+if(!jQinput.length){
+    return;
+}
+var jQform = jQinput.closest('form');
+
+/* Add lang on TR */
+jQform.find('[data-wpulang]').each(function(i,el){
+    var jQel = jQuery(el);
+    jQel.closest('tr').attr('data-wpulangtr', jQel.attr('data-wpulang'));
+});
+var jQTr = jQform.find('[data-wpulangtr]'),
+    _firstLang = Object.keys(_langs)[0];
+if(!jQTr.length){
+    return;
+}
+
+/* Build switch */
+var select_html='';
+for(var _l in _langs){
+    select_html+='<option value="'+_l+'">'+_langs[_l]+'</option>';
+}
+var jQSelect = jQuery('<label><strong>${label_txt}</strong> : <select>'+select_html+'</select></label>');
+jQSelect.prependTo(jQform);
+
+/* Switch */
+function show_lang(_lang_id){
+    jQTr.hide();
+    jQTr.filter('[data-wpulangtr="'+_lang_id+'"]').show();
+}
+show_lang(_firstLang);
+jQSelect.on('change', 'select',function(){
+    show_lang(jQuery(this).val());
+});
+
+}());
 </script>
 EOT;
     }
@@ -534,11 +629,20 @@ EOT;
             return $languages;
         }
 
+        // Obtaining from WPML
+        if (function_exists('icl_get_languages')) {
+            $wpml_lang = icl_get_languages();
+            foreach ($wpml_lang as $lang) {
+                $languages[$lang['code']] = $lang['native_name'];
+            }
+            return $languages;
+        }
         return array();
 
     }
 
     public function get_current_language() {
+
         // Obtaining from Qtranslate
         if (function_exists('qtrans_getLanguage')) {
             return qtrans_getLanguage();
@@ -552,6 +656,11 @@ EOT;
         // Obtaining from Polylang
         if (function_exists('pll_current_language')) {
             return pll_current_language();
+        }
+
+        // Obtaining from WPML
+        if (defined('ICL_LANGUAGE_CODE')) {
+            return ICL_LANGUAGE_CODE;
         }
 
         return '';
