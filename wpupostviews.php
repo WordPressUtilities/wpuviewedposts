@@ -2,17 +2,26 @@
 
 /*
 Plugin Name: WPU Post views
-Plugin URI: http://github.com/Darklg/WPUtilities
+Plugin URI: https://github.com/wordPressUtilities/wpupostviews
+Update URI: https://github.com/wordPressUtilities/wpupostviews
 Description: Track most viewed posts
-Version: 0.10.3
+Version: 0.11.0
 Author: Darklg
-Author URI: http://darklg.me/
+Author URI: https://darklg.me/
+Text Domain: wpupostviews
+Domain Path: /lang
+Requires at least: 6.2
+Requires PHP: 7.4
 License: MIT License
-License URI: http://opensource.org/licenses/MIT
+License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUPostViews {
-    public $plugin_version = '0.10.3';
+    public $plugin_description;
+    public $settings_update;
+    public $settings_details;
+    public $settings;
+    public $plugin_version = '0.11.0';
     public $options;
     public function __construct() {
         add_action('plugins_loaded', array(&$this,
@@ -48,9 +57,14 @@ class WPUPostViews {
     }
 
     public function load_extras() {
-        load_plugin_textdomain('wpupostviews', false, dirname(plugin_basename(__FILE__)) . '/lang/');
 
-        include 'inc/WPUBaseUpdate/WPUBaseUpdate.php';
+        $lang_dir = dirname(plugin_basename(__FILE__)) . '/lang/';
+        if (!load_plugin_textdomain('wpupostviews', false, $lang_dir)) {
+            load_muplugin_textdomain('wpupostviews', $lang_dir);
+        }
+        $this->plugin_description = __('Track most viewed posts', 'wpupostviews');
+
+        require_once dirname( __FILE__ ) . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
         $this->settings_update = new \wpupostviews\WPUBaseUpdate(
             'WordPressUtilities',
             'wpupostviews',

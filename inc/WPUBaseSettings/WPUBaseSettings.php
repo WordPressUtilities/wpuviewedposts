@@ -4,11 +4,12 @@ namespace wpupostviews;
 /*
 Class Name: WPU Base Settings
 Description: A class to handle native settings in WordPress admin
-Version: 0.17.2
+Version: 0.18.0
+Class URI: https://github.com/WordPressUtilities/wpubaseplugin
 Author: Darklg
-Author URI: http://darklg.me/
+Author URI: https://darklg.me/
 License: MIT License
-License URI: http://opensource.org/licenses/MIT
+License URI: https://opensource.org/licenses/MIT
 */
 
 class WPUBaseSettings {
@@ -74,13 +75,7 @@ class WPUBaseSettings {
     }
 
     public function get_settings() {
-        $opt = get_option($this->settings_details['option_id']);
-        if (!is_array($opt)) {
-            /* Set default values */
-            $opt = $this->get_setting_values();
-            update_option($this->settings_details['option_id'], $opt);
-        }
-        return $opt;
+        return $this->get_setting_values();
     }
 
     public function get_setting($id, $lang = false) {
@@ -160,6 +155,7 @@ class WPUBaseSettings {
             $settings[$id]['label_check'] = isset($input['label_check']) ? $input['label_check'] : $settings[$id]['label'];
             $settings[$id]['help'] = isset($input['help']) ? $input['help'] : '';
             $settings[$id]['type'] = isset($input['type']) ? $input['type'] : 'text';
+            $settings[$id]['post_type'] = isset($input['post_type']) ? $input['post_type'] : 'post';
             $settings[$id]['section'] = isset($input['section']) ? $input['section'] : $default_section;
             $settings[$id]['datas'] = isset($input['datas']) && is_array($input['datas']) ? $input['datas'] : array(__('No'), __('Yes'));
             $settings[$id]['editor_args'] = isset($input['editor_args']) && is_array($input['editor_args']) ? $input['editor_args'] : array();
@@ -221,7 +217,9 @@ class WPUBaseSettings {
                 'id' => $id,
                 'lang_id' => $lang_id,
                 'label_for' => $id,
+                'translated_from' => isset($this->settings[$id]['translated_from']) ? $this->settings[$id]['translated_from'] : false,
                 'required' => $this->settings[$id]['required'],
+                'post_type' => $this->settings[$id]['post_type'],
                 'datas' => $this->settings[$id]['datas'],
                 'type' => $this->settings[$id]['type'],
                 'help' => $this->settings[$id]['help'],
@@ -317,8 +315,17 @@ class WPUBaseSettings {
         if (isset($args['required']) && $args['required']) {
             $attr .= ' required="required" ';
         }
+        if (isset($args['placeholder']) && $args['placeholder']) {
+            $attr .= ' placeholder="' . esc_attr($args['placeholder']) . '" ';
+        }
+        if (isset($args['attributes_html']) && $args['attributes_html']) {
+            $attr .= ' ' . $args['attributes_html'];
+        }
         $id .= $attr;
-        $value = isset($options[$args['id']]) ? $options[$args['id']] : $args['default_value'] ;
+        $value = isset($options[$args['id']]) ? $options[$args['id']] : $args['default_value'];
+        if(!isset($options[$args['id']]) && isset($args['translated_from']) && $args['translated_from'] && isset($options[$args['translated_from']]) && $options[$args['translated_from']]){
+            $value = $options[$args['translated_from']];
+        }
 
         switch ($args['type']) {
         case 'checkbox':
@@ -356,12 +363,14 @@ class WPUBaseSettings {
             break;
         case 'post':
         case 'page':
-            wp_dropdown_pages(array(
+            $code_dropdown = wp_dropdown_pages(array(
+                'echo' => false,
                 'name' => $name_val,
                 'id' => $args['id'],
                 'selected' => $value,
                 'post_type' => isset($args['post_type']) ? $args['post_type'] : $args['type']
             ));
+            echo str_replace('<select ', '<select ' . $attr, $code_dropdown);
             break;
         case 'select':
             echo '<select ' . $name . ' ' . $id . '>';
@@ -372,7 +381,7 @@ class WPUBaseSettings {
             break;
         case 'editor':
             $editor_args = array(
-                'textarea_rows' => isset($args['textarea_rows']) && is_numeric($args['textarea_rows']) ? $args['textarea_rows'] : 3,
+                'textarea_rows' => isset($args['textarea_rows']) && is_numeric($args['textarea_rows']) ? $args['textarea_rows'] : 3
             );
             if (isset($args['editor_args']) && is_array($args['editor_args'])) {
                 $editor_args = $args['editor_args'];
@@ -393,7 +402,7 @@ class WPUBaseSettings {
     }
 
     public static function isRegex($str0) {
-        /* Thx http://stackoverflow.com/a/16098097 */
+        /* Thx https://stackoverflow.com/a/16098097 */
         $regex = "/^\/[\s\S]+\/$/";
         return preg_match($regex, $str0);
     }
@@ -499,13 +508,13 @@ EOT;
 <script>
 (function(){
 /* Check langs */
-var _langs = ${languages};
+var _langs = {$languages};
 if(!_langs){
     return;
 }
 
 /* Get items */
-var jQinput = jQuery('input[type="hidden"][name="option_page"][value="${option_id}"]');
+var jQinput = jQuery('input[type="hidden"][name="option_page"][value="{$option_id}"]');
 if(!jQinput.length){
     return;
 }
@@ -527,7 +536,7 @@ var select_html='';
 for(var _l in _langs){
     select_html+='<option value="'+_l+'">'+_langs[_l]+'</option>';
 }
-var jQSelect = jQuery('<label><strong>${label_txt}</strong> : <select>'+select_html+'</select></label>');
+var jQSelect = jQuery('<label><strong>{$label_txt}</strong> : <select>'+select_html+'</select></label>');
 jQSelect.prependTo(jQform);
 
 /* Switch */

@@ -31,7 +31,7 @@ jQuery(document).ready(function wpupostviews_domready() {
                 'action': 'wpupostviews_track_view',
                 'date': Date.now(),
                 'post_id': wpupostviews_object.post_id,
-            }, function(response) {});
+            }, function() {});
         },100);
     }(wpupostviews_object));
 });
