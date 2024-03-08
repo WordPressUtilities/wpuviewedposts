@@ -1,17 +1,18 @@
 <?php
+defined('ABSPATH') || die;
 
 /*
 Plugin Name: WPU Post views
 Plugin URI: https://github.com/wordPressUtilities/wpupostviews
 Update URI: https://github.com/wordPressUtilities/wpupostviews
 Description: Track most viewed posts
-Version: 0.11.0
+Version: 0.12.0
 Author: Darklg
 Author URI: https://darklg.me/
 Text Domain: wpupostviews
 Domain Path: /lang
 Requires at least: 6.2
-Requires PHP: 7.4
+Requires PHP: 8.0
 License: MIT License
 License URI: https://opensource.org/licenses/MIT
 */
@@ -20,8 +21,9 @@ class WPUPostViews {
     public $plugin_description;
     public $settings_update;
     public $settings_details;
+    public $settings_obj;
     public $settings;
-    public $plugin_version = '0.11.0';
+    public $plugin_version = '0.12.0';
     public $options;
     public function __construct() {
         add_action('plugins_loaded', array(&$this,
@@ -54,6 +56,20 @@ class WPUPostViews {
         add_action('save_post', array(&$this,
             'save_meta_box_data'
         ));
+
+        add_filter('manage_edit-post_columns', array(&$this,
+            'add_extra_columns'
+        ));
+        add_filter('manage_edit-post_sortable_columns', array(&$this,
+            'extra_columns_sortable'
+        ));
+        add_action('manage_post_posts_custom_column', array(&$this,
+            'extra_columns_content'
+        ), 10, 2);
+        add_action('pre_get_posts', array(&$this,
+            'extra_columns_orderby'
+        ));
+
     }
 
     public function load_extras() {
@@ -64,7 +80,7 @@ class WPUPostViews {
         }
         $this->plugin_description = __('Track most viewed posts', 'wpupostviews');
 
-        require_once dirname( __FILE__ ) . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
+        require_once __DIR__ . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
         $this->settings_update = new \wpupostviews\WPUBaseUpdate(
             'WordPressUtilities',
             'wpupostviews',
@@ -91,6 +107,9 @@ class WPUPostViews {
                 ),
                 'tracking' => array(
                     'name' => __('Tracking', 'wpupostviews')
+                ),
+                'interface' => array(
+                    'name' => __('Interface', 'wpupostviews')
                 )
             )
         );
@@ -115,17 +134,21 @@ class WPUPostViews {
                 'label' => __('Dont count bots', 'wpupostviews'),
                 'label_check' => __('Do not track views from bots and crawlers.', 'wpupostviews'),
                 'type' => 'checkbox'
+            ),
+            'display_column_count' => array(
+                'section' => 'interface',
+                'label' => __('Display count', 'wpupostviews'),
+                'label_check' => __('See the number of views in posts list.', 'wpupostviews'),
+                'type' => 'checkbox'
             )
         );
 
-        if (is_admin()) {
-            include 'inc/WPUBaseSettings/WPUBaseSettings.php';
-            $settings_obj = new \wpupostviews\WPUBaseSettings($this->settings_details, $this->settings);
+        include 'inc/WPUBaseSettings/WPUBaseSettings.php';
+        $this->settings_obj = new \wpupostviews\WPUBaseSettings($this->settings_details, $this->settings);
 
-            ## if no auto create_page and medias ##
-            if (isset($_GET['page']) && $_GET['page'] == 'wpupostviews') {
-                add_action('admin_init', array(&$settings_obj, 'load_assets'));
-            }
+        ## if no auto create_page and medias ##
+        if (is_admin() && isset($_GET['page']) && $_GET['page'] == 'wpupostviews') {
+            add_action('admin_init', array(&$this->settings_obj, 'load_assets'));
         }
     }
 
@@ -270,6 +293,40 @@ class WPUPostViews {
         // Number of views
         if (isset($_POST['wpupostviews_nbviews'], $_POST['wpupostviews_update_count']) && is_numeric($_POST['wpupostviews_nbviews']) && is_numeric($_POST['wpupostviews_update_count'])) {
             update_post_meta($post_id, 'wpupostviews_nbviews', sanitize_text_field($_POST['wpupostviews_nbviews']));
+        }
+    }
+
+    /* ----------------------------------------------------------
+      Admin
+    ---------------------------------------------------------- */
+
+    function add_extra_columns($columns) {
+        if ($this->settings_obj->get_setting('display_column_count') == '1') {
+            $columns['wpupostviews_nbviews'] = __('Views', 'wpupostviews');
+        }
+        return $columns;
+    }
+
+    function extra_columns_content($column_name, $post_id) {
+        if ($column_name == 'wpupostviews_nbviews') {
+            echo intval(get_post_meta($post_id, 'wpupostviews_nbviews', true), 10);
+        }
+    }
+
+    function extra_columns_sortable($columns) {
+        if ($this->settings_obj->get_setting('display_column_count') == '1') {
+            $columns['wpupostviews_nbviews'] = 'wpupostviews_nbviews';
+        }
+        return $columns;
+    }
+
+    function extra_columns_orderby($query) {
+        if (!is_admin()) {
+            return;
+        }
+        if ($query->get('orderby') == 'wpupostviews_nbviews') {
+            $query->set('meta_key', 'wpupostviews_nbviews');
+            $query->set('orderby', 'meta_value_num');
         }
     }
 
