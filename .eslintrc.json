@@ -8,10 +8,12 @@
         "ecmaVersion": "latest"
     },
     "rules": {
-        "no-prototype-builtins": 0
+        "no-prototype-builtins": 0,
+        "no-console": 1,
+        "no-unused-vars": 1,
+        "no-undef": 1
     },
     "globals": {
-        "_options": true,
         "wp": true,
         "jQuery": true
     }

@@ -6,13 +6,14 @@ Plugin Name: WPU Post views
 Plugin URI: https://github.com/wordPressUtilities/wpupostviews
 Update URI: https://github.com/wordPressUtilities/wpupostviews
 Description: Track most viewed posts
-Version: 0.12.0
+Version: 0.13.0
 Author: Darklg
 Author URI: https://darklg.me/
 Text Domain: wpupostviews
 Domain Path: /lang
 Requires at least: 6.2
 Requires PHP: 8.0
+Network: Optional
 License: MIT License
 License URI: https://opensource.org/licenses/MIT
 */
@@ -23,13 +24,16 @@ class WPUPostViews {
     public $settings_details;
     public $settings_obj;
     public $settings;
-    public $plugin_version = '0.12.0';
+    public $plugin_version = '0.13.0';
     public $options;
     public function __construct() {
-        add_action('plugins_loaded', array(&$this,
+        add_action('init', array(&$this,
+            'load_translation'
+        ));
+        add_action('init', array(&$this,
             'load_extras'
         ));
-        add_action('plugins_loaded', array(&$this,
+        add_action('init', array(&$this,
             'set_options'
         ));
         add_action('plugins_loaded', array(&$this,
@@ -72,13 +76,17 @@ class WPUPostViews {
 
     }
 
-    public function load_extras() {
-
+    public function load_translation() {
         $lang_dir = dirname(plugin_basename(__FILE__)) . '/lang/';
-        if (!load_plugin_textdomain('wpupostviews', false, $lang_dir)) {
+        if (strpos(__DIR__, 'mu-plugins') !== false) {
             load_muplugin_textdomain('wpupostviews', $lang_dir);
+        } else {
+            load_plugin_textdomain('wpupostviews', false, $lang_dir);
         }
         $this->plugin_description = __('Track most viewed posts', 'wpupostviews');
+    }
+
+    public function load_extras() {
 
         require_once __DIR__ . '/inc/WPUBaseUpdate/WPUBaseUpdate.php';
         $this->settings_update = new \wpupostviews\WPUBaseUpdate(
@@ -233,7 +241,7 @@ class WPUPostViews {
         echo '<form action="options.php" method="post">';
         settings_fields($this->settings_details['option_id']);
         do_settings_sections($this->options['plugin_id']);
-        echo submit_button(__('Save Changes', 'wpupostviews'));
+        submit_button(__('Save Changes', 'wpupostviews'));
         echo '</form>';
         echo '</div>';
     }
@@ -300,27 +308,27 @@ class WPUPostViews {
       Admin
     ---------------------------------------------------------- */
 
-    function add_extra_columns($columns) {
+    public function add_extra_columns($columns) {
         if ($this->settings_obj->get_setting('display_column_count') == '1') {
             $columns['wpupostviews_nbviews'] = __('Views', 'wpupostviews');
         }
         return $columns;
     }
 
-    function extra_columns_content($column_name, $post_id) {
+    public function extra_columns_content($column_name, $post_id) {
         if ($column_name == 'wpupostviews_nbviews') {
             echo intval(get_post_meta($post_id, 'wpupostviews_nbviews', true), 10);
         }
     }
 
-    function extra_columns_sortable($columns) {
+    public function extra_columns_sortable($columns) {
         if ($this->settings_obj->get_setting('display_column_count') == '1') {
             $columns['wpupostviews_nbviews'] = 'wpupostviews_nbviews';
         }
         return $columns;
     }
 
-    function extra_columns_orderby($query) {
+    public function extra_columns_orderby($query) {
         if (!is_admin()) {
             return;
         }
